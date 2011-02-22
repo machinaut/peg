@@ -1,0 +1,80 @@
+# Parsing Expression Grammar (PEG) for the ice9 language
+
+package ice9
+
+# declare ice9 as a grammar
+
+type Ice9 Peg {
+    Expression
+}
+
+program	← {var|type|forward|proc} { stm }  # empty file is valid program!
+
+# 3 complex tokens (these are usually handled in the lexer)
+id	← [A-Za-z][A-Za-z0-9_]*
+int	← [0-9]+		# decimal integer literal
+string  ← "[^"\n]*" 		# double-quoted string: any char but " and \n
+	← '[^'\n]*'  		# single-quoted string: any char but ' and \n
+
+stms	← stm { stm }
+stm	← if | do | fa | 'break' ';' | 'exit' ';'
+	← 'return' ';'
+	← lvalue ':=' exp ';'	# assignment statement
+	← 'write' exp ';' | 'writes' exp ';'
+	← exp ';'		# any exp is valid
+	← ';'			# the "empty" statement
+
+if	← 'if' exp '←' stms { '[]' exp '←' stms } 'fi'
+	← 'if' exp '←' stms { '[]' exp '←' stms } '[]' 'else' '←' stms 'fi'
+
+do	← 'do' exp '←' { stm } 'od'
+
+fa	← 'fa' id ':=' exp 'to' exp '←' { stm } 'af'
+
+proc	← 'proc' id '(' declist ')'
+		{type|var} {stm} 'end'
+	← 'proc' id '(' declist ')' ':' typeid 
+		{type|var} {stm} 'end'
+
+idlist  ← id { ',' id}
+
+var	← 'var' varlist ';'
+varlist  ← idlist ':' typeid { '[' int ']' } { ',' varlist}
+
+forward ← 'forward' id '(' declist ')' ';'
+	← 'forward' id '(' declist ')' ':' typeid ';'
+
+type	← 'type' id '=' typeid { '[' int ']' } ';'
+
+declist ← declistx
+	←            # empty
+declistx ← idlist ':' typeid { ',' declistx }
+
+typeid ← id			# This for semantics
+
+lvalue	← id | lvalue '[' exp ']'
+
+exp	← lvalue
+	← int				# integer literal
+	← 'true'			# boolean literal
+	← 'false'			# boolean literal
+	← string
+	← 'read'
+	← '-' exp
+	← '?' exp
+	← id '(' ')'			# procedure call
+	← id '(' exp { ',' exp } ')'	# procedure call
+	← exp '+' exp
+	← exp '-' exp
+	← exp '*' exp
+	← exp '/' exp
+	← exp '%' exp
+	← exp '=' exp
+	← exp '!=' exp
+	← exp '>' exp
+	← exp '<' exp
+	← exp '>=' exp
+	← exp '<=' exp
+	← '(' exp ')'
+
+########### End EBNF ############
